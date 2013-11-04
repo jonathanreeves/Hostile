@@ -1,0 +1,172 @@
+  Hostile Takeover: 
+  CS248 Final Project, Fall 2004
+  
+  Written by Jonathan Reeves (working alone)
+  jrreeves@stanford.edu
+ 
+  A simple 3D video game demonstrating the use of OpenGL for graphics 
+  rendering with a number of advanced techniques and optimizations to make
+  it interesting.  
+
+COMPILATION
+~~~~~~~~~~~
+To compile this program simply run the `make` in the main directory. Note that
+the compilation uses the gcc -march flag to specify architecture, so if the
+game is run on any PC other than the linux machine in the basement graphics
+lab, the Makefile should be edited to specify the correct architecture, or 
+leave it blank. There are a number of optional compile flags, which work in
+conjuction with my advanced features, which I will talk about now. 
+
+ADVANCED FEATURES
+~~~~~~~~~~~~~~~~~
+here is a basic list of advanced techniques used, listed in order of 
+sophistication. I will elaborate on each of them
+
+1) emergent AI
+2) octree subdivision with view frustum culling
+3) collision detection
+4) heads up display
+5) very simple physics
+
+
+ELABORATION OF ADVANCED FEATURES
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1) The basic AI structure uses finite state machine control, which is event
+driven. Events include timeouts, player entering the field of view, player 
+leaving the field of view, getting shot, losing all health, etc. Each state
+has its own behavior which includes attacking, repositioning, cruising, in
+the process of recovering from being shot, scanning, dying, and idle. Coupled
+with this FSM framework, flocking algorithms were used to yield emergent 
+behavior among groups of bots. When you start the game there will be two flocks
+which are generated (each flock has its own model, which they all share both
+in game and in memory). Within each flock, the bots have certain behavioral
+attributes which make them act in certain ways. When bots within a flock are
+near to other bots within a flock, their confidence increases. Each bot then
+has a confidence threshold, at which they will attack the player if he comes
+into their field of view. If their confidence is below the threshold, and the 
+player comes into view, they will try to run away from him, while still trying
+to adhere to the rules of flocking.  The confidence threshold is assigned
+randomly so some bots will attack if alone, and others will not. You can 
+only be sure by trying to approach one and see how they react. 
+
+Should a bot decide he wants to attack, his aiming can be fairly accurate 
+making the game more challenging. Bots don't simply point at your present 
+direction, they take into account the velocity of their projectiles, as well
+as your present velocity to predict where you will be in the next several 
+frames and aim there. As the player moves farther away, this becomes less
+accurate. 
+
+In addition, if the player is seen by one member of
+a flock, who is sufficiently close to other members, he will yell at them to
+alert them of the player's presence. 
+
+All of these considerations yield to some very interesting and unpredictable
+ behavior which can be fun to watch. The bots can observed in their natural
+habitat by compiling the program with the command:
+ `make OBSERVE=true`
+This will make it so that bots never see you and you can watch how they move
+in flocks, how they get bored and stop, how they scan, and how they can form
+sub-flocks which branch of periods of time before coming back to join up 
+with the main flock. 
+
+
+2) All terrain is generated with an octree subdivision such that the leaf nodes
+contain vertices and texture coordinates as well as a texture ID to bind when
+the node is being drawn. This structure is exploited using view-frustum culling
+each time the terrain is drawn to avoid drawing areas which are not to be seen.
+This allows for efficient rendering of an otherwise impossibly large scene. One
+interesting trick that I used is to define two frustums which are used in the
+game. Both are roughly the same except that one has a much shorter far-field
+plane. When the scene is rendered, it used a frustum which has a far-field
+plane which is very far away. This way the skybox can be placed far away and
+still be drawn, making it look like the sky and mountains really are far away.
+When frustum culling is down however, it uses the short frustum to keep things
+moving in real time. 
+
+When you play the game, you'll notice there is a layer of
+fog that moves with you obscuring the terrain and all objects behind the fog. 
+This is because since the scene is rendered with a large frustum, and culled
+with a short frustum, you can actually see the scene being filled in by cubes
+in front of you. The fog-plane hides this effect, making it appear smooth,
+while still making the sky visible. All objects including the bots are culled
+in this way, thus the only object which is always drawn is the skybox. 
+
+You can disable culling by compiling with:
+`make NOFRUST=true`
+and see how slow each frame is rendered without frustum culling. 
+
+3) I use simple collision detection with projectiles hitting characters as
+well as characters moving over terrain. The game wouldn't be much use without
+it, but I am only using bounding spheres. Collision with terrain is done by
+indexing the height of the terrain at a particular point and checking to see
+if an object is above or below it, then correcting. 
+
+4) As you can see, there is a heads up display showing your current health, the
+total number of enemies (i.e. the sum of both flocks) and the current frames
+per second. When you kill an enemy, he will remain on screen for a few moments
+until a timeout, when he is deleted. At this point the enemy count is updated.
+
+5) The physical modeling used relates to camera movement over the terrain. 
+You'll notice that while the terrain is quite choppy, the camera moves 
+smoothly as you  travel around the scene. This is because it sits on a 
+dash-pot which dampens out the rough motions that occur as players move from 
+one point to the next. 
+
+RFERENCES AND RESOURCES
+~~~~~~~~~~~~~~~~~~~~~~~
+I used a lot of very helpful resources to make this game. Since all of them
+had example code written in C++ using classes, templates and inheritence, 
+and my game is written entirely in ANSI C (try compiling with `make ANSI=true`)
+it is safe to say that any source code borrowed was modified heavily. Please 
+contact me if you have any questions about code I borrowed and I'd be happy to 
+enumerate everything. I'll list the obvious sources first:
+
+1) the openGL programming guide
+
+2) all openGL tutorials at nehe.gamedev.net including those related to 
+   collision detection, alpha blending, fog, etc.
+
+3) all openGL tutorials at gametutorials.com including those related to 
+   ortho mode, heightfield terrain, skyboxes, and especially octree subdivision
+   and frustum culling. Note that some of these tutorials are also given in 
+   a book available at the bookstore called game programming tricks of the 
+   trade by Lorenzo Phillips, which I also used as a reference.
+
+4) Game Programming Gems (Charles River Media). Particularly the sections on
+   AI, and flocking algorithms. This book served more as an inspiration
+
+5) RiverSoftAVG (www.riversoftavg.com) which has a number of articles on 
+   emergent ai and example code written in Delphi for windows.
+
+6) forums at gamedev.net...hard to say exactly which. There are number of 
+   discussions people had that I found useful such as ways to make horizon
+   fog (which I didn't actually use but helped me to think about other ways
+   to obscure artifacts from the octree).
+
+7) tuxracer (tuxracer.sourceforge.net) I played this game and examined the 
+   source code to get ideas about how to make a fog plane and make it look
+   decent. 
+
+8) OpenGL Game Programming by Kevin Hawkins and Dave Astle. Gave me inspiration
+   for the water effect, and helped me to understand other techniques like
+   scene graphs, which I never actually used. 
+
+9) Jim Plank's tutorials on linked lists (notes for his cs360 course at the
+   university of tennesee I found during a google search for linked lists). I
+   used linked lists to keep track of projectiles and the bots in each flock.
+
+I think that's it...hopefully I didn't miss anything. 
+
+GAME CONTENT
+~~~~~~~~~~~~
+Most of my textures game from doing a google image search, so unfortunately I 
+don't actually know where exactly they came from. Some of them (such as the 
+grass texture) I actually did make myself by starting with an image and 
+doing a tilable blur to make it a real texture. In addition, I used this 
+website to get the water texture, and some others that I didn't use:
+astronomy.swin.edu.au/~pbourke/texture
+I got the skybox from a tutorial on skyboxes at gametutorials.com. Two of the
+models I used (ogro and sod) came from the source code of the game engine
+at the end of the OpenGL Game Programming book. The boba fett model came from
+the game "mice and men" which was a finalist in last year's CS248 competition.
+
